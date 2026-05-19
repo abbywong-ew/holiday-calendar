@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #7a8c3f;
+  --color-primary-light: #9aad52;
+  --color-primary-dark: #5c6b2e;
+  --color-bg-app: #f7f9f2;
+  --color-surface: #ffffff;
+  --color-text-primary: #2d3320;
+  --color-text-secondary: #5a6640;
+  --color-weekend: #d6e8b0;
+  --color-national: #ff9800;
+  --color-state-hol: #ffd54f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: #2d3320;
+  background: #f7f9f2;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f7f9f2; }
+::-webkit-scrollbar-thumb { background: #9aad52; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #7a8c3f; }
+
+/* Today cell outline — screen only */
+.today-outline {
+  outline: 3px solid #5c6b2e;
+  outline-offset: -3px;
+  z-index: 10;
+  position: relative;
+}
+
+/* ============================
+   PRINT STYLES — Portrait A4
+   ============================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 13mm 12mm 13mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide interactive UI */
+  nav,
+  .print\:hidden,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* White background — override the app's off-white tint */
+  html,
+  body,
+  .bg-\[\#F7F9F2\],
+  .bg-\[#F7F9F2\] {
+    background-color: #ffffff !important;
+  }
+
+  body {
+    font-size: 8px !important;
+    -webkit-text-size-adjust: none;
+  }
+
+  /* Remove today outline on print */
+  .today-outline {
+    outline: none !important;
+    z-index: auto !important;
+  }
+
+  /* Calendar grid: always 3 columns */
+  .calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .calendar-grid > div {
+    border-radius: 3px !important;
+  }
+
+  /* Holiday list: side by side */
+  .print-holiday-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-top: 8px !important;
+  }
+
+  /* Force holiday cell colors to print */
+  .bg-\[\#FF9800\] { background-color: #ff9800 !important; }
+  .bg-\[\#FFD54F\] { background-color: #ffd54f !important; }
+  .bg-\[\#D6E8B0\] { background-color: #d6e8b0 !important; }
+  .bg-\[\#7A8C3F\] { background-color: #7a8c3f !important; }
+  .bg-\[\#5C6B2E\] { background-color: #5c6b2e !important; }
+
+  /* Remove page padding */
+  .max-w-7xl {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+  }
+}
+
+/* Fade-in animation for toast */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+/* Line clamp */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
