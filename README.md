@@ -1,10 +1,22 @@
-# Malaysian Holiday Calendar
+# Jiyū-Hato: Freedom Pigeon Calendar
+
+**自由のはと — Malaysian Holiday Calendar**
 
 A fully-featured holiday calendar web application for Malaysian states with national and state-specific holidays. Built with Next.js 16, TypeScript, Tailwind CSS v4, and Supabase.
 
-**Live Demo:** [https://my-calendar-fawn.vercel.app](https://my-calendar-fawn.vercel.app)
+*Jiyū-Hato (自由のはと) = "Freedom Pigeon" — celebrating freedom, peace, and the joy of knowing when to celebrate.*
+
+**Live Demo:** [https://holiday-calendar-hatori.vercel.app](https://holiday-calendar-hatori.vercel.app)
 
 **GitHub:** [abbywong-ew/holiday-calendar](https://github.com/abbywong-ew/holiday-calendar)
+
+**Project Folder:** `jiyuu-hato`
+
+---
+
+## About Jiyū-Hato 🕊️
+
+The name celebrates **freedom** (jiyū / 自由) and **peace** (represented by the pigeon/hato / はと). The project reflects the belief that knowing when to celebrate—when to gather with loved ones, when to rest—is a fundamental freedom. The pigeon mascot embodies calm, peaceful design while guiding users through their calendar year with serenity.
 
 ---
 

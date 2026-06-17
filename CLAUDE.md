@@ -1,12 +1,41 @@
-# Malaysian Holiday Calendar — Development Guide
+# Jiyū-Hato: Freedom Pigeon Calendar — Development Guide
+
+**自由のはと — Malaysian Holiday Calendar**
 
 ## Project Overview
 
 A fully-featured holiday calendar web app for Malaysian states with national and state-specific holidays. Built with Next.js 16, TypeScript, Tailwind CSS v4, and Supabase.
 
+**Project Name:** Jiyū-Hato (Freedom Pigeon)  
+**Folder Name:** `jiyuu-hato`
+
 - **Live:** https://holiday-calendar-hatori.vercel.app
 - **GitHub:** https://github.com/abbywong-ew/holiday-calendar
 - **Repo:** abbywong-ew/holiday-calendar
+
+## Project Identity
+
+**Jiyū-Hato** celebrates freedom (jiyū / 自由) and peace (pigeon / はと). The mascot — a serene, peaceful pigeon — embodies calm design while serving as the visual identity of the app. The design philosophy is "Peaceful Geometry": organic forms meet geometric precision, creating a brand that feels both modern and timeless, like a beloved character similar to maneki-neko (lucky cat).
+
+---
+
+## Visual Identity & Mascot 🕊️
+
+**Character:** Jiyū-Hato Pigeon  
+**Design Philosophy:** Peaceful Geometry  
+**Files:**
+- `public/jiyuu_hato_character.svg` — Mascot illustration
+- Brand colors: Sage green (#7A8C3F), Warm peach (#FFA726), Off-white (#F7F9F2)
+- Style: Simple, modern, slightly stylized (hand-crafted quality)
+- Use cases: App icon/favicon, marketing, UI accents, splash screens
+
+**Mascot Characteristics:**
+- Peaceful, serene expression (gentle closed eyes)
+- Subtle time/calendar halo (12-point marker circle)
+- Upward tail feathers (symbolizing freedom)
+- Rounded, organic forms with geometric precision
+- Transparent background for flexible placement
+- Scales infinitely (SVG format)
 
 ---
 
