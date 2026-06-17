@@ -107,7 +107,7 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
                 Weekend Days
               </th>
               <th className="text-center px-4 py-3 font-semibold text-[#2D3320]">
-                Edit
+                Actions
               </th>
             </tr>
           </thead>
@@ -126,13 +126,13 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => startEdit(state)}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded bg-[#F7F9F2] hover:bg-[#D6E8B0] text-[#5C6B2E] font-medium border border-[#D6E8B0] transition-colors"
+                    className="p-1.5 rounded bg-[#F7F9F2] hover:bg-[#D6E8B0] text-[#5C6B2E] border border-[#D6E8B0] transition-colors"
                     title="Edit state"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
+                      width="14"
+                      height="14"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -143,7 +143,6 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
-                    Edit
                   </button>
                 </td>
               </tr>

@@ -48,7 +48,7 @@ export default function HolidayList({
       <div className="rounded-lg overflow-hidden border border-orange-200">
         <div className="bg-orange-50 border-b border-orange-200 px-4 py-2 print:px-2 print:py-1">
           <h3 className="font-bold text-[#2D3320] text-sm print:text-[9px] flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#FF9800]" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-[#FFA726]" />
             National Holidays ({year})
           </h3>
         </div>

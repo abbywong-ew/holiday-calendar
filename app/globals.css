@@ -11,7 +11,7 @@
   --color-text-primary: #2d3320;
   --color-text-secondary: #5a6640;
   --color-weekend: #d6e8b0;
-  --color-national: #ff9800;
+  --color-national: #ffa726;
   --color-state-hol: #ffd54f;
 }
 
@@ -102,7 +102,7 @@ html {
   }
 
   /* Force holiday cell colors to print */
-  .bg-\[\#FF9800\] { background-color: #ff9800 !important; }
+  .bg-\[\#FFA726\] { background-color: #ffa726 !important; }
   .bg-\[\#FFD54F\] { background-color: #ffd54f !important; }
   .bg-\[\#D6E8B0\] { background-color: #d6e8b0 !important; }
   .bg-\[\#7A8C3F\] { background-color: #7a8c3f !important; }

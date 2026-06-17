@@ -103,7 +103,7 @@ export default function CalendarPage() {
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#5A6640] print:hidden">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded bg-[#FF9800]" />
+            <span className="inline-block w-3 h-3 rounded bg-[#FFA726]" />
             National Holiday
           </span>
           <span className="flex items-center gap-1.5">

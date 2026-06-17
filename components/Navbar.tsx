@@ -11,7 +11,7 @@ export default function Navbar() {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <nav className="bg-[#7A8C3F] sticky top-0 z-50 shadow-md print:hidden">
+    <nav className="bg-[#7A8C3F] sticky top-0 z-50 shadow-md print:hidden relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
         <span className="text-white font-bold text-xl tracking-tight">
           MY Calendar
@@ -47,9 +47,9 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile dropdown */}
+      {/* Mobile dropdown — absolute so it floats over page content */}
       {isMenuOpen && (
-        <div className="md:hidden bg-[#5C6B2E] border-t border-[#4a5525]">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-[#5C6B2E] border-t border-[#4a5525] shadow-lg">
           {[
             { href: "/calendar", label: "Calendar" },
             { href: "/settings", label: "Settings" },

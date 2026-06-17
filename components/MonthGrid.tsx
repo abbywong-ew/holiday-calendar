@@ -70,7 +70,7 @@ export default function MonthGrid({
 
             let bg = colWeekend ? "bg-[#D6E8B0]" : "bg-white";
             let fg = "text-[#2D3320]";
-            if (hasNational) { bg = "bg-[#FF9800]"; fg = "text-white"; }
+            if (hasNational) { bg = "bg-[#FFA726]"; fg = "text-[#2D3320]"; }
             else if (hasState) { bg = "bg-[#FFD54F]"; fg = "text-[#2D3320]"; }
 
             const isHovered = tooltip?.wi === wi && tooltip?.di === di;

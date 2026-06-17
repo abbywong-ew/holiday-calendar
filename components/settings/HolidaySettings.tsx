@@ -61,6 +61,10 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [colFilterName, setColFilterName] = useState("");
+  const [colFilterType, setColFilterType] = useState<"" | "national" | "state">("");
+  const [colFilterDate, setColFilterDate] = useState("");
+  const [colFilterDay, setColFilterDay] = useState("");
   const { toast, showToast, hideToast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -186,6 +190,13 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
     showToast("Holiday deleted.");
   }
 
+  function getDayShort(dateStr: string): string {
+    if (!dateStr || dateStr === "—") return "—";
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length < 3 || isNaN(parts[0])) return "—";
+    return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleString("en-US", { weekday: "short" });
+  }
+
   /* Date display for the table — fixed shows yyyy-mm-dd for filter year */
   function getDateDisplay(holiday: Holiday): string {
     if (holiday.dateType === "fixed") {
@@ -209,14 +220,25 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
     else { setSortField(field); setSortDir("asc"); }
   }
 
-  const sortedHolidays = [...data.holidays].sort((a, b) => {
-    let av = "", bv = "";
-    if (sortField === "name") { av = a.name; bv = b.name; }
-    else if (sortField === "type") { av = a.type; bv = b.type; }
-    else { av = getDateDisplay(a); bv = getDateDisplay(b); }
-    const cmp = av.localeCompare(bv);
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+  const sortedHolidays = [...data.holidays]
+    .filter((h) => {
+      if (colFilterName && !h.name.toLowerCase().includes(colFilterName.toLowerCase())) return false;
+      if (colFilterType && h.type !== colFilterType) return false;
+      if (colFilterDate && !getDateDisplay(h).includes(colFilterDate)) return false;
+      if (colFilterDay) {
+        const day = getDayShort(getDateDisplay(h));
+        if (!day.toLowerCase().startsWith(colFilterDay.toLowerCase())) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let av = "", bv = "";
+      if (sortField === "name") { av = a.name; bv = b.name; }
+      else if (sortField === "type") { av = a.type; bv = b.type; }
+      else { av = getDateDisplay(a); bv = getDateDisplay(b); }
+      const cmp = av.localeCompare(bv);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   const thClass =
     "px-4 py-3 text-left font-semibold text-[#2D3320] cursor-pointer select-none hover:bg-[#EBF3D6] transition-colors";
@@ -476,6 +498,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="w-full text-sm">
           <thead>
+            {/* Sort headers */}
             <tr className="bg-[#F7F9F2] border-b border-gray-200">
               <th className={thClass} onClick={() => toggleSort("name")}>
                 Holiday <SortIcon field="name" active={sortField === "name"} dir={sortDir} />
@@ -483,17 +506,67 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
               <th className={thClass} onClick={() => toggleSort("type")}>
                 Type <SortIcon field="type" active={sortField === "type"} dir={sortDir} />
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-[#2D3320] hidden sm:table-cell">States</th>
+              <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">States</th>
               <th className={thClass} onClick={() => toggleSort("date")}>
                 Date <SortIcon field="date" active={sortField === "date"} dir={sortDir} />
               </th>
+              <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">Day</th>
               <th className="text-center px-4 py-3 font-semibold text-[#2D3320]">Actions</th>
+            </tr>
+            {/* Column filters */}
+            <tr className="bg-white border-b border-gray-200">
+              <th className="px-2 py-1.5">
+                <input
+                  type="text"
+                  placeholder="Search…"
+                  value={colFilterName}
+                  onChange={(e) => setColFilterName(e.target.value)}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
+                />
+              </th>
+              <th className="px-2 py-1.5">
+                <select
+                  value={colFilterType}
+                  onChange={(e) => setColFilterType(e.target.value as "" | "national" | "state")}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
+                >
+                  <option value="">All</option>
+                  <option value="national">National</option>
+                  <option value="state">State</option>
+                </select>
+              </th>
+              <th className="px-2 py-1.5">
+                {/* no filter for States column */}
+              </th>
+              <th className="px-2 py-1.5">
+                <input
+                  type="text"
+                  placeholder="yyyy-mm-dd…"
+                  value={colFilterDate}
+                  onChange={(e) => setColFilterDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
+                />
+              </th>
+              <th className="px-2 py-1.5">
+                <select
+                  value={colFilterDay}
+                  onChange={(e) => setColFilterDay(e.target.value)}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
+                >
+                  <option value="">All</option>
+                  {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </th>
+              <th className="px-2 py-1.5" />
             </tr>
           </thead>
           <tbody>
             {sortedHolidays.map((holiday) => {
               const stateDisplay = getStateDisplay(holiday);
               const isTruncated = stateDisplay.length > 40;
+              const dateStr = getDateDisplay(holiday);
               return (
                 <tr key={holiday.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
                   <td className="px-4 py-3 text-[#2D3320] font-medium">{holiday.name}</td>
@@ -506,34 +579,48 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                       {holiday.type === "national" ? "National" : "State"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[#5A6640] hidden sm:table-cell max-w-[200px]"
+                  <td className="px-4 py-3 text-[#5A6640] max-w-[200px]"
                     title={isTruncated ? stateDisplay : undefined}>
                     <span className="line-clamp-1">
                       {isTruncated ? stateDisplay.slice(0, 40) + "…" : stateDisplay}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-[#5A6640] font-mono text-xs whitespace-nowrap">
-                    {getDateDisplay(holiday)}
+                    {dateStr}
+                  </td>
+                  <td className="px-4 py-3 text-[#5A6640] text-xs whitespace-nowrap">
+                    {getDayShort(dateStr)}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => openEditForm(holiday)}
-                        className="text-xs px-2 py-1 rounded bg-[#F7F9F2] hover:bg-[#D6E8B0] text-[#5C6B2E] border border-[#D6E8B0] transition-colors">
-                        Edit
+                        className="p-1.5 rounded bg-[#F7F9F2] hover:bg-[#D6E8B0] text-[#5C6B2E] border border-[#D6E8B0] transition-colors"
+                        title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
                       </button>
                       <button onClick={() => confirmDelete(holiday.id)}
-                        className="text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors">
-                        Delete
+                        className="p-1.5 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors"
+                        title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
                       </button>
                     </div>
                   </td>
                 </tr>
               );
             })}
-            {data.holidays.length === 0 && (
+            {sortedHolidays.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 text-sm">
-                  No holidays added yet.
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">
+                  {data.holidays.length === 0 ? "No holidays added yet." : "No holidays match the current filters."}
                 </td>
               </tr>
             )}

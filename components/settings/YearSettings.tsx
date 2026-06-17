@@ -30,7 +30,7 @@ export default function YearSettings({ data, onUpdate }: YearSettingsProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-[#2D3320] mb-2">Available Years</h2>
+      <h2 className="text-xl font-bold text-[#2D3320] mb-4">Available Years</h2>
       <p className="text-sm text-[#5A6640] mb-4">
         Toggle which years are visible in the Calendar page year dropdown. At
         least one year must remain enabled.
