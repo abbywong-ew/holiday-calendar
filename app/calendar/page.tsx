@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import CalendarGrid from "@/components/CalendarGrid";
 import HolidayList from "@/components/HolidayList";
+import HolidayDateTable from "@/components/HolidayDateTable";
 import PrintButton from "@/components/PrintButton";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -96,22 +97,22 @@ export default function CalendarPage() {
         {/* Print-only header */}
         <div className="hidden print:block mb-4">
           <h1 className="text-2xl font-bold text-[#2D3320]">
-            {selectedState.name} — {selectedYear} Holiday Calendar
+            {selectedYear} Holiday Calendar - {selectedState.name}
           </h1>
         </div>
 
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#5A6640] print:hidden">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded bg-[#FFA726]" />
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "var(--hol-national)" }} />
             National Holiday
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded bg-[#FFD54F]" />
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "var(--hol-state)" }} />
             State Holiday
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded bg-[#D6E8B0]" />
+            <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "var(--hol-weekend)" }} />
             Weekend
           </span>
           <span className="flex items-center gap-1.5">
@@ -132,6 +133,13 @@ export default function CalendarPage() {
         <HolidayList
           year={selectedYear}
           state={selectedState}
+          holidays={data.holidays}
+        />
+
+        {/* Holiday date table */}
+        <HolidayDateTable
+          selectedYear={selectedYear}
+          selectedState={selectedState}
           holidays={data.holidays}
         />
       </div>

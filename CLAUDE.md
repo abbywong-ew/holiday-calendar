@@ -70,9 +70,10 @@ my-calendar/
 │   ├── PrintButton.tsx      # Print trigger
 │   ├── Toast.tsx            # Toast notifications
 │   └── settings/
-│       ├── StateSettings.tsx    # States table: State | Weekend Days | Actions (icon-only edit)
-│       ├── HolidaySettings.tsx  # Holidays table: Holiday | Type | States | Date | Day | Actions (all 6 cols always shown, horizontal scroll on mobile)
-│       └── YearSettings.tsx     # Year checkboxes: 2-col grid
+│       ├── StateSettings.tsx    # States table: State | Code | Weekend Days | Actions
+│       ├── HolidaySettings.tsx  # Holidays table: Holiday | Date | Day | Type | States | Actions
+│       ├── YearSettings.tsx     # Year checkboxes: 2-col grid
+│       └── ColorSettings.tsx    # Color pickers for National/State/Weekend colors
 ├── hooks/
 │   └── useCalendarData.ts   # Loads data from Supabase on mount, syncs to localStorage
 ├── utils/
@@ -114,16 +115,21 @@ my-calendar/
 - **Line 51–69:** Mobile dropdown: `absolute top-full left-0 right-0` (floats, doesn't push content)
 
 ### Holiday Settings (`components/settings/HolidaySettings.tsx`)
-- **6 columns always shown:** Holiday | Type | States | Date | Day | Actions
+- **6 columns:** Holiday | Date | Day | Type | States | Actions
+- **States column:** Shows 3-letter postal codes (e.g. `PRK, SGR`) or `ALL` for national holidays
 - **Mobile:** Table uses `overflow-x-auto`, all columns present, user scrolls horizontally
-- **Filters:** Search (Holiday), dropdown (Type), search (Date), dropdown (Day)
+- **Filters:** Search (Holiday), text (Date), dropdown (Day), dropdown (Type), checkbox-dropdown (States)
+- **States filter:** Spreadsheet-style checkbox dropdown — shows all 16 states, "Select all / Clear", count badge when active
 - **Actions:** Icon-only buttons (pencil=edit, bin=delete), `p-1.5` sizing
 - **Sort:** Click headers to sort by name/type/date
-- **Colspan:** Updated to 6 for empty state message
+- **Default form:** Type = State, DateType = Variable, no states pre-checked
+- **Filter year:** Defaults to current year
 
 ### State Settings (`components/settings/StateSettings.tsx`)
-- **3 columns:** State | Weekend Days | Actions
+- **4 columns:** State | Code | Weekend Days | Actions
+- **Code column:** 3-letter Malaysian postal code (JHR, KDH, KTN, MLK, NSN, PHG, PNG, PRK, PLS, SBH, SWK, SGR, TRG, KUL, LBN, PJY)
 - **Actions:** Icon-only edit button (pencil), `p-1.5` sizing
+- **Edit modal:** Includes State Code field with `(Default: XXX)` hint below it; auto-uppercases, validates 2–4 letters
 
 ### Year Settings (`components/settings/YearSettings.tsx`)
 - **2-column grid:** Year checkboxes, responsive on mobile
@@ -205,6 +211,41 @@ my-calendar/
 - ✅ Mobile (375px): all tables/forms responsive, scrollable tables on mobile
 - ✅ Year Range: 2-col checkbox grid on both sizes
 - ✅ Calendar: full-width dropdowns, responsive month grids
+
+---
+
+## Recent Amendments (2026-06-18)
+
+### Settings UX
+- Settings tabs reordered: **Holidays → States → Year Range → Colours** (default tab: Holidays)
+- "Colors" renamed to "Colours" (British spelling)
+- Added **Colors/Colours tab** (`components/settings/ColorSettings.tsx`): live color pickers for National Holiday, State Holiday, Weekend colors; changes apply immediately via CSS custom properties; Reset to Defaults button
+
+### State Codes
+- Added `code: string` field to `State` type (`types/index.ts`)
+- `DEFAULT_STATE_CODES` map exported from `utils/storageUtils.ts` (3-letter Malaysian postal: JHR, KDH, KTN, MLK, NSN, PHG, PNG, PRK, PLS, SBH, SWK, SGR, TRG, KUL, LBN, PJY)
+- Migration in `loadData()`: existing users without `code` field get codes auto-filled
+- State Settings table: added Code column
+- Edit State modal: Code field with `(Default: XXX)` hint from `DEFAULT_STATE_CODES`
+
+### Holiday Settings Table
+- Columns reordered: Holiday | Date | Day | Type | States | Actions
+- States column now shows 3-letter codes (`PRK, SGR, PNG, KUL`) or `ALL`
+- Added spreadsheet-style **checkbox-dropdown States filter** (click-outside closes, count badge when active)
+
+### Calendar Tooltip
+- State names in hover tooltip replaced with 3-letter codes; "All states" → `ALL`
+
+### Print Improvements
+- HolidayDateTable print: font 6.5px → 8.5px, cell padding 0.5px → 2px 4px, year col 68px → 90px, line-height 1.1 → 1.4
+- Print header format changed: `"Perak — 2026 Holiday Calendar"` → `"2026 Holiday Calendar - Perak"`
+
+### Add Holiday Form
+- Default type: State (not National)
+- Default date type: Variable Date
+- Applies to States: shown inline beside label, full list without scrollbar
+- Date Type: side-by-side Fixed/Variable panels, unselected panel greyed at opacity-30
+- Variable date input: `type="date"` with label `"Date (dd/mm/yyyy)"`
 
 ---
 
@@ -297,6 +338,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key-here>
 1. Calendar page > click Print button
 2. Browser print dialog opens
 3. A4 portrait, 12mm margins, colors preserved
+
+---
+
+## Future Plans
+
+### School Holidays (planned)
+Add school holidays as date ranges (start date → end date), distinct from single-day public holidays.
+
+**Key design decisions to make:**
+- New holiday type `"school"` or a separate `SchoolHoliday` type with `startDate` / `endDate` fields
+- Display on calendar: span/range highlight across multiple days
+- Settings: separate tab or merged into Holidays tab with a "School" type option
+- States: school holidays differ by state (same approach as existing state holidays)
+- Color: needs a new CSS custom property (e.g. `--hol-school`) and color picker in Colours tab
+- Print: range rows in HolidayDateTable showing start–end instead of single date
 
 ---
 

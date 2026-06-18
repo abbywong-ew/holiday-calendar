@@ -58,7 +58,8 @@ export default function MonthGrid({
               return (
                 <div
                   key={di}
-                  className={`h-9 print:h-5 border-r border-gray-100 last:border-r-0 ${colWeekend ? "bg-[#D6E8B0]" : "bg-white"}`}
+                  className="h-9 print:h-5 border-r border-gray-100 last:border-r-0"
+                  style={{ backgroundColor: colWeekend ? "var(--hol-weekend)" : "#ffffff" }}
                 />
               );
             }
@@ -68,10 +69,10 @@ export default function MonthGrid({
             const hasState = cell.holidays.some((h) => h.type === "state");
             const hasHoliday = cell.holidays.length > 0;
 
-            let bg = colWeekend ? "bg-[#D6E8B0]" : "bg-white";
-            let fg = "text-[#2D3320]";
-            if (hasNational) { bg = "bg-[#FFA726]"; fg = "text-[#2D3320]"; }
-            else if (hasState) { bg = "bg-[#FFD54F]"; fg = "text-[#2D3320]"; }
+            let bgColor = colWeekend ? "var(--hol-weekend)" : "#ffffff";
+            const fg = "text-[#2D3320]";
+            if (hasNational) bgColor = "var(--hol-national)";
+            else if (hasState) bgColor = "var(--hol-state)";
 
             const isHovered = tooltip?.wi === wi && tooltip?.di === di;
 
@@ -79,9 +80,9 @@ export default function MonthGrid({
               cell.holidays.map((h) => {
                 const names =
                   h.stateIds.length === allStates.length
-                    ? "All states"
+                    ? "ALL"
                     : h.stateIds
-                        .map((id) => allStates.find((s) => s.id === id)?.name ?? id)
+                        .map((id) => allStates.find((s) => s.id === id)?.code ?? id.toUpperCase())
                         .join(", ");
                 return `${h.name} — ${names}`;
               });
@@ -89,7 +90,8 @@ export default function MonthGrid({
             return (
               <div
                 key={di}
-                className={`relative h-9 print:h-5 flex flex-col items-center justify-start print:justify-center pt-0.5 print:pt-0 border-r border-gray-100 last:border-r-0 ${bg} ${fg} ${cell.isToday ? "today-outline" : ""}`}
+                className={`relative h-9 print:h-5 flex flex-col items-center justify-start print:justify-center pt-0.5 print:pt-0 border-r border-gray-100 last:border-r-0 ${fg} ${cell.isToday ? "today-outline" : ""}`}
+                style={{ backgroundColor: bgColor }}
                 onMouseEnter={() => {
                   if (hasHoliday) setTooltip({ wi, di, lines: buildLines() });
                 }}

@@ -5,18 +5,20 @@ import { useCalendarData } from "@/hooks/useCalendarData";
 import StateSettings from "@/components/settings/StateSettings";
 import HolidaySettings from "@/components/settings/HolidaySettings";
 import YearSettings from "@/components/settings/YearSettings";
+import ColorSettings from "@/components/settings/ColorSettings";
 
-type Tab = "states" | "holidays" | "years";
+type Tab = "states" | "holidays" | "years" | "colors";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "states", label: "States" },
   { id: "holidays", label: "Holidays" },
+  { id: "states", label: "States" },
   { id: "years", label: "Year Range" },
+  { id: "colors", label: "Colours" },
 ];
 
 export default function SettingsPage() {
   const { data, updateData, isLoaded } = useCalendarData();
-  const [activeTab, setActiveTab] = useState<Tab>("states");
+  const [activeTab, setActiveTab] = useState<Tab>("holidays");
 
   if (!isLoaded) {
     return (
@@ -58,6 +60,9 @@ export default function SettingsPage() {
           )}
           {activeTab === "years" && (
             <YearSettings data={data} onUpdate={updateData} />
+          )}
+          {activeTab === "colors" && (
+            <ColorSettings data={data} onUpdate={updateData} />
           )}
         </div>
       </div>

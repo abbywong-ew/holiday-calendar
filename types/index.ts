@@ -3,6 +3,7 @@ export type DayOfWeek = "friday" | "saturday" | "sunday";
 export type State = {
   id: string;
   name: string;
+  code: string;
   weekendDays: DayOfWeek[];
 };
 
@@ -26,8 +27,15 @@ export type YearConfig = {
   [year: string]: boolean;
 };
 
+export type ColorConfig = {
+  national: string;
+  state: string;
+  weekend: string;
+};
+
 export type AppData = {
   states: State[];
   holidays: Holiday[];
   years: YearConfig;
+  colors: ColorConfig;
 };

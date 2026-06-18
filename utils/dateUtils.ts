@@ -74,3 +74,9 @@ export function getDaysInMonthForDropdown(month: number): number {
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return daysInMonth[month - 1] || 31;
 }
+
+export function getShortDayName(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleString("en-US", { weekday: "short" });
+}

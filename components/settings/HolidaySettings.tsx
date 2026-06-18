@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Holiday, HolidayType, DateType, AppData } from "@/types";
 import { ALL_STATE_IDS } from "@/utils/storageUtils";
 import { MONTH_NAMES_LONG, getDaysInMonthForDropdown } from "@/utils/dateUtils";
@@ -29,12 +29,12 @@ type SortDir = "asc" | "desc";
 const BLANK_FORM: FormState = {
   id: null,
   name: "",
-  type: "national",
-  dateType: "fixed",
+  type: "state",
+  dateType: "variable",
   fixedMonth: 1,
   fixedDay: 1,
   variableDates: {},
-  stateIds: ALL_STATE_IDS,
+  stateIds: [],
   newVariableDate: "",
 };
 
@@ -55,9 +55,11 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [errors, setErrors] = useState<string[]>([]);
-  const [filterYear, setFilterYear] = useState<string>(
-    Object.keys(data.years).filter((y) => data.years[y]).sort().at(-1) ?? "2026"
-  );
+  const [filterYear, setFilterYear] = useState<string>(() => {
+    const enabled = Object.keys(data.years).filter((y) => data.years[y]).sort();
+    const cur = new Date().getFullYear().toString();
+    return enabled.includes(cur) ? cur : (enabled.at(-1) ?? cur);
+  });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -65,8 +67,21 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const [colFilterType, setColFilterType] = useState<"" | "national" | "state">("");
   const [colFilterDate, setColFilterDate] = useState("");
   const [colFilterDay, setColFilterDay] = useState("");
+  const [colFilterStates, setColFilterStates] = useState<string[]>([]);
+  const [statesDropdownOpen, setStatesDropdownOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
+  const statesDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (statesDropdownRef.current && !statesDropdownRef.current.contains(e.target as Node)) {
+        setStatesDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const enabledYears = Object.keys(data.years).filter((y) => data.years[y]).sort();
   const maxDays = getDaysInMonthForDropdown(form.fixedMonth);
@@ -208,9 +223,9 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   }
 
   function getStateDisplay(holiday: Holiday): string {
-    if (holiday.stateIds.length === ALL_STATE_IDS.length) return "All states";
+    if (holiday.stateIds.length === ALL_STATE_IDS.length) return "ALL";
     return holiday.stateIds
-      .map((id) => data.states.find((s) => s.id === id)?.name ?? id)
+      .map((id) => data.states.find((s) => s.id === id)?.code ?? id.toUpperCase())
       .join(", ");
   }
 
@@ -229,6 +244,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
         const day = getDayShort(getDateDisplay(h));
         if (!day.toLowerCase().startsWith(colFilterDay.toLowerCase())) return false;
       }
+      if (colFilterStates.length > 0 && !colFilterStates.some((sid) => h.stateIds.includes(sid))) return false;
       return true;
     })
     .sort((a, b) => {
@@ -271,8 +287,8 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
           )}
 
           {/* Name */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[#2D3320] mb-1">
+          <div className="mb-4 flex items-center gap-4">
+            <label className="text-sm font-medium text-[#2D3320] shrink-0 min-w-[130px]">
               Holiday Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -280,13 +296,13 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
               value={form.name}
               onChange={(e) => setFormField("name", e.target.value)}
               placeholder="e.g. Thaipusam"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
             />
           </div>
 
           {/* Holiday Type */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[#2D3320] mb-2">Holiday Type</label>
+          <div className="mb-4 flex items-center gap-4">
+            <span className="text-sm font-medium text-[#2D3320] shrink-0 min-w-[130px]">Holiday Type</span>
             <div className="flex gap-6">
               {(["national", "state"] as HolidayType[]).map((t) => (
                 <label key={t} className="flex items-center gap-2 cursor-pointer">
@@ -306,48 +322,49 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
           </div>
 
           {/* States */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[#2D3320] mb-2">
-              Applies to States{" "}
-              <span className="text-[#5A6640] font-normal text-xs">
+          <div className="mb-4 flex items-start gap-4">
+            <div className="shrink-0 min-w-[130px]">
+              <span className="block text-sm font-medium text-[#2D3320]">Applies to States</span>
+              <span className="block text-xs text-[#5A6640] mt-0.5">
                 ({form.type === "national" ? "all pre-checked" : "none pre-checked"})
               </span>
-            </label>
-            <div className="grid grid-cols-2 gap-0.5 p-3 bg-white border border-gray-200 rounded-lg max-h-56 overflow-y-auto">
-              {[...data.states]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((state) => (
-                  <label
-                    key={state.id}
-                    className="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.stateIds.includes(state.id)}
-                      onChange={() => toggleStateId(state.id)}
-                      className="w-3.5 h-3.5 accent-[#7A8C3F]"
-                    />
-                    <span className="text-xs text-[#2D3320]">{state.name}</span>
-                  </label>
-                ))}
             </div>
-            <div className="flex gap-2 mt-2">
-              <button type="button" onClick={() => setFormField("stateIds", ALL_STATE_IDS)}
-                className="text-xs text-[#7A8C3F] underline hover:no-underline">Select all</button>
-              <span className="text-gray-300">|</span>
-              <button type="button" onClick={() => setFormField("stateIds", [])}
-                className="text-xs text-[#7A8C3F] underline hover:no-underline">Clear all</button>
+            <div className="flex-1">
+              <div className="grid grid-cols-2 gap-0.5 p-3 bg-white border border-gray-200 rounded-lg">
+                {[...data.states]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((state) => (
+                    <label
+                      key={state.id}
+                      className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-1"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.stateIds.includes(state.id)}
+                        onChange={() => toggleStateId(state.id)}
+                        className="w-3.5 h-3.5 accent-[#7A8C3F]"
+                      />
+                      <span className="text-xs text-[#2D3320]">{state.name}</span>
+                    </label>
+                  ))}
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button type="button" onClick={() => setFormField("stateIds", ALL_STATE_IDS)}
+                  className="text-xs text-[#7A8C3F] underline hover:no-underline">Select all</button>
+                <span className="text-gray-300">|</span>
+                <button type="button" onClick={() => setFormField("stateIds", [])}
+                  className="text-xs text-[#7A8C3F] underline hover:no-underline">Clear all</button>
+              </div>
             </div>
           </div>
 
           {/* ── Date Type — side-by-side layout ── */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[#2D3320] mb-3">Date Type</label>
+          <div className="mb-4 flex items-start gap-4">
+            <span className="text-sm font-medium text-[#2D3320] shrink-0 min-w-[130px] pt-0.5">Date Type</span>
 
-            <div className="flex flex-col md:flex-row md:items-stretch">
+            <div className="flex-1 flex flex-col md:flex-row md:items-stretch">
               {/* Fixed Date column */}
               <div className="flex-1 md:pr-6">
-                {/* Radio — always interactive */}
                 <label className="flex items-center gap-2 cursor-pointer mb-3">
                   <input
                     type="radio"
@@ -360,9 +377,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                     Fixed Date (same every year)
                   </span>
                 </label>
-                {/* Controls — dimmed when not selected */}
                 <div className={`transition-opacity ${form.dateType !== "fixed" ? "opacity-30 pointer-events-none" : "opacity-100"}`}>
-                  <p className="text-xs font-medium text-[#5A6640] mb-2">Month &amp; Day</p>
                   <div className="flex gap-3 items-end">
                     <div>
                       <label className="block text-xs text-[#5A6640] mb-1">Month</label>
@@ -400,12 +415,11 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                 </div>
               </div>
 
-              {/* Divider — horizontal on mobile, vertical on desktop */}
+              {/* Divider */}
               <div className="border-t md:border-t-0 md:border-l border-gray-200 my-4 md:my-0" />
 
               {/* Variable Date column */}
               <div className="flex-1 md:pl-6">
-                {/* Radio — always interactive */}
                 <label className="flex items-center gap-2 cursor-pointer mb-3">
                   <input
                     type="radio"
@@ -418,12 +432,10 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                     Variable Date (different each year)
                   </span>
                 </label>
-                {/* Controls — dimmed when not selected */}
                 <div className={`transition-opacity ${form.dateType !== "variable" ? "opacity-30 pointer-events-none" : "opacity-100"}`}>
-                  <p className="text-xs font-medium text-[#5A6640] mb-2">Date per Year</p>
                   <div className="flex gap-2 items-end mb-3">
                     <div>
-                      <label className="block text-xs text-[#5A6640] mb-1">Date (yyyy-mm-dd)</label>
+                      <label className="block text-xs text-[#5A6640] mb-1">Date (dd/mm/yyyy)</label>
                       <input
                         type="date"
                         value={form.newVariableDate}
@@ -498,23 +510,24 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="w-full text-sm">
           <thead>
-            {/* Sort headers */}
+            {/* Sort headers — order: Holiday, Date, Day, Type, States, Actions */}
             <tr className="bg-[#F7F9F2] border-b border-gray-200">
               <th className={thClass} onClick={() => toggleSort("name")}>
                 Holiday <SortIcon field="name" active={sortField === "name"} dir={sortDir} />
               </th>
-              <th className={thClass} onClick={() => toggleSort("type")}>
-                Type <SortIcon field="type" active={sortField === "type"} dir={sortDir} />
-              </th>
-              <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">States</th>
               <th className={thClass} onClick={() => toggleSort("date")}>
                 Date <SortIcon field="date" active={sortField === "date"} dir={sortDir} />
               </th>
               <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">Day</th>
+              <th className={thClass} onClick={() => toggleSort("type")}>
+                Type <SortIcon field="type" active={sortField === "type"} dir={sortDir} />
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">States</th>
               <th className="text-center px-4 py-3 font-semibold text-[#2D3320]">Actions</th>
             </tr>
             {/* Column filters */}
             <tr className="bg-white border-b border-gray-200">
+              {/* Holiday filter */}
               <th className="px-2 py-1.5">
                 <input
                   type="text"
@@ -524,20 +537,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                   className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
                 />
               </th>
-              <th className="px-2 py-1.5">
-                <select
-                  value={colFilterType}
-                  onChange={(e) => setColFilterType(e.target.value as "" | "national" | "state")}
-                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
-                >
-                  <option value="">All</option>
-                  <option value="national">National</option>
-                  <option value="state">State</option>
-                </select>
-              </th>
-              <th className="px-2 py-1.5">
-                {/* no filter for States column */}
-              </th>
+              {/* Date filter */}
               <th className="px-2 py-1.5">
                 <input
                   type="text"
@@ -547,6 +547,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                   className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
                 />
               </th>
+              {/* Day filter */}
               <th className="px-2 py-1.5">
                 <select
                   value={colFilterDay}
@@ -559,6 +560,78 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                   ))}
                 </select>
               </th>
+              {/* Type filter */}
+              <th className="px-2 py-1.5">
+                <select
+                  value={colFilterType}
+                  onChange={(e) => setColFilterType(e.target.value as "" | "national" | "state")}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-normal text-[#2D3320] focus:outline-none focus:ring-1 focus:ring-[#7A8C3F]"
+                >
+                  <option value="">All</option>
+                  <option value="national">National</option>
+                  <option value="state">State</option>
+                </select>
+              </th>
+              {/* States checkbox-dropdown filter */}
+              <th className="px-2 py-1.5">
+                <div ref={statesDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setStatesDropdownOpen((o) => !o)}
+                    className={`w-full flex items-center justify-between border rounded px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-[#7A8C3F] ${
+                      colFilterStates.length > 0
+                        ? "border-[#7A8C3F] bg-[#EBF3D6] text-[#2D3320]"
+                        : "border-gray-200 text-[#2D3320]"
+                    }`}
+                  >
+                    <span>{colFilterStates.length === 0 ? "All" : `${colFilterStates.length} selected`}</span>
+                    <span className="ml-1 opacity-50">▾</span>
+                  </button>
+                  {statesDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg w-52">
+                      {/* Select all / Clear all */}
+                      <div className="flex gap-2 px-3 py-2 border-b border-gray-100">
+                        <button
+                          type="button"
+                          onClick={() => setColFilterStates(data.states.map((s) => s.id))}
+                          className="text-xs text-[#7A8C3F] underline hover:no-underline"
+                        >Select all</button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setColFilterStates([])}
+                          className="text-xs text-[#7A8C3F] underline hover:no-underline"
+                        >Clear</button>
+                      </div>
+                      {/* State checkboxes */}
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {[...data.states]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((state) => (
+                            <label
+                              key={state.id}
+                              className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-left font-normal"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={colFilterStates.includes(state.id)}
+                                onChange={() =>
+                                  setColFilterStates((prev) =>
+                                    prev.includes(state.id)
+                                      ? prev.filter((id) => id !== state.id)
+                                      : [...prev, state.id]
+                                  )
+                                }
+                                className="w-3.5 h-3.5 accent-[#7A8C3F] shrink-0"
+                              />
+                              <span className="text-xs text-[#2D3320] font-normal text-left">{state.name}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </th>
               <th className="px-2 py-1.5" />
             </tr>
           </thead>
@@ -570,6 +643,12 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
               return (
                 <tr key={holiday.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
                   <td className="px-4 py-3 text-[#2D3320] font-medium">{holiday.name}</td>
+                  <td className="px-4 py-3 text-[#5A6640] font-mono text-xs whitespace-nowrap">
+                    {dateStr}
+                  </td>
+                  <td className="px-4 py-3 text-[#5A6640] text-xs whitespace-nowrap">
+                    {getDayShort(dateStr)}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
                       holiday.type === "national"
@@ -584,12 +663,6 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                     <span className="line-clamp-1">
                       {isTruncated ? stateDisplay.slice(0, 40) + "…" : stateDisplay}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-[#5A6640] font-mono text-xs whitespace-nowrap">
-                    {dateStr}
-                  </td>
-                  <td className="px-4 py-3 text-[#5A6640] text-xs whitespace-nowrap">
-                    {getDayShort(dateStr)}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">

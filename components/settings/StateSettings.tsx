@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { State, DayOfWeek, AppData } from "@/types";
+import { DEFAULT_STATE_CODES } from "@/utils/storageUtils";
 import { Toast, useToast } from "@/components/Toast";
 
 type StateSettingsProps = {
@@ -12,6 +13,7 @@ type StateSettingsProps = {
 type EditState = {
   id: string;
   name: string;
+  code: string;
   weekendDays: DayOfWeek[];
 };
 
@@ -33,7 +35,7 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
   const { toast, showToast, hideToast } = useToast();
 
   function startEdit(state: State) {
-    setEditingState({ ...state });
+    setEditingState({ id: state.id, name: state.name, code: state.code ?? "", weekendDays: state.weekendDays });
     setErrors([]);
   }
 
@@ -65,7 +67,10 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
     const errs: string[] = [];
 
     const trimmedName = editingState.name.trim();
+    const trimmedCode = editingState.code.trim().toUpperCase();
     if (!trimmedName) errs.push("State name is required.");
+    if (!trimmedCode) errs.push("State code is required.");
+    if (trimmedCode && !/^[A-Z]{2,4}$/.test(trimmedCode)) errs.push("State code must be 2–4 uppercase letters.");
     if (editingState.weekendDays.length === 0)
       errs.push("At least one weekend day must be selected.");
     if (editingState.weekendDays.length > 2)
@@ -78,7 +83,7 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
 
     const updatedStates = data.states.map((s) =>
       s.id === editingState.id
-        ? { ...s, name: trimmedName, weekendDays: editingState.weekendDays }
+        ? { ...s, name: trimmedName, code: trimmedCode, weekendDays: editingState.weekendDays }
         : s
     );
 
@@ -104,6 +109,9 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
                 State
               </th>
               <th className="text-left px-4 py-3 font-semibold text-[#2D3320]">
+                Code
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-[#2D3320]">
                 Weekend Days
               </th>
               <th className="text-center px-4 py-3 font-semibold text-[#2D3320]">
@@ -119,6 +127,9 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
               >
                 <td className="px-4 py-3 text-[#2D3320] font-medium">
                   {state.name}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-[#5A6640]">
+                  {state.code ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-[#5A6640]">
                   {weekendLabel(state.weekendDays)}
@@ -179,6 +190,27 @@ export default function StateSettings({ data, onUpdate }: StateSettingsProps) {
                 }
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F] focus:border-transparent"
               />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-[#2D3320] mb-1">
+                State Code <span className="text-[#5A6640] font-normal">(3-letter postal)</span>
+              </label>
+              <input
+                type="text"
+                value={editingState.code}
+                onChange={(e) =>
+                  setEditingState({ ...editingState, code: e.target.value.toUpperCase() })
+                }
+                maxLength={4}
+                placeholder="e.g. JHR"
+                className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-[#7A8C3F] focus:border-transparent"
+              />
+              {DEFAULT_STATE_CODES[editingState.id] && (
+                <p className="mt-1 text-xs text-[#5A6640]">
+                  Default: {DEFAULT_STATE_CODES[editingState.id]}
+                </p>
+              )}
             </div>
 
             <div className="mb-5">

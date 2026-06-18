@@ -1,4 +1,4 @@
-import { AppData, Holiday, State, YearConfig } from "@/types";
+import { AppData, ColorConfig, Holiday, State, YearConfig } from "@/types";
 
 export const STORAGE_KEY = "my-calendar-app-data";
 
@@ -25,43 +25,42 @@ const ALL_EXCEPT_KELANTAN_TERENGGANU = ALL_STATE_IDS.filter(
   (id) => id !== "kelantan" && id !== "terengganu"
 );
 
+export const DEFAULT_STATE_CODES: Record<string, string> = {
+  johor:          "JHR",
+  kedah:          "KDH",
+  kelantan:       "KTN",
+  melaka:         "MLK",
+  negeri_sembilan:"NSN",
+  pahang:         "PHG",
+  penang:         "PNG",
+  perak:          "PRK",
+  perlis:         "PLS",
+  sabah:          "SBH",
+  sarawak:        "SWK",
+  selangor:       "SGR",
+  terengganu:     "TRG",
+  wp_kl:          "KUL",
+  wp_labuan:      "LBN",
+  wp_putrajaya:   "PJY",
+};
+
 const INITIAL_STATES: State[] = [
-  { id: "johor", name: "Johor", weekendDays: ["saturday", "sunday"] },
-  { id: "kedah", name: "Kedah", weekendDays: ["friday", "saturday"] },
-  { id: "kelantan", name: "Kelantan", weekendDays: ["friday", "saturday"] },
-  { id: "melaka", name: "Melaka", weekendDays: ["saturday", "sunday"] },
-  {
-    id: "negeri_sembilan",
-    name: "Negeri Sembilan",
-    weekendDays: ["saturday", "sunday"],
-  },
-  { id: "pahang", name: "Pahang", weekendDays: ["saturday", "sunday"] },
-  { id: "penang", name: "Penang", weekendDays: ["saturday", "sunday"] },
-  { id: "perak", name: "Perak", weekendDays: ["saturday", "sunday"] },
-  { id: "perlis", name: "Perlis", weekendDays: ["friday", "saturday"] },
-  { id: "sabah", name: "Sabah", weekendDays: ["saturday", "sunday"] },
-  { id: "sarawak", name: "Sarawak", weekendDays: ["saturday", "sunday"] },
-  { id: "selangor", name: "Selangor", weekendDays: ["saturday", "sunday"] },
-  {
-    id: "terengganu",
-    name: "Terengganu",
-    weekendDays: ["friday", "saturday"],
-  },
-  {
-    id: "wp_kl",
-    name: "Wilayah Persekutuan Kuala Lumpur",
-    weekendDays: ["saturday", "sunday"],
-  },
-  {
-    id: "wp_labuan",
-    name: "Wilayah Persekutuan Labuan",
-    weekendDays: ["friday", "saturday"],
-  },
-  {
-    id: "wp_putrajaya",
-    name: "Wilayah Persekutuan Putrajaya",
-    weekendDays: ["saturday", "sunday"],
-  },
+  { id: "johor",          name: "Johor",                            code: "JHR", weekendDays: ["saturday", "sunday"] },
+  { id: "kedah",          name: "Kedah",                            code: "KDH", weekendDays: ["friday", "saturday"] },
+  { id: "kelantan",       name: "Kelantan",                         code: "KTN", weekendDays: ["friday", "saturday"] },
+  { id: "melaka",         name: "Melaka",                           code: "MLK", weekendDays: ["saturday", "sunday"] },
+  { id: "negeri_sembilan",name: "Negeri Sembilan",                  code: "NSN", weekendDays: ["saturday", "sunday"] },
+  { id: "pahang",         name: "Pahang",                           code: "PHG", weekendDays: ["saturday", "sunday"] },
+  { id: "penang",         name: "Penang",                           code: "PNG", weekendDays: ["saturday", "sunday"] },
+  { id: "perak",          name: "Perak",                            code: "PRK", weekendDays: ["saturday", "sunday"] },
+  { id: "perlis",         name: "Perlis",                           code: "PLS", weekendDays: ["friday", "saturday"] },
+  { id: "sabah",          name: "Sabah",                            code: "SBH", weekendDays: ["saturday", "sunday"] },
+  { id: "sarawak",        name: "Sarawak",                          code: "SWK", weekendDays: ["saturday", "sunday"] },
+  { id: "selangor",       name: "Selangor",                         code: "SGR", weekendDays: ["saturday", "sunday"] },
+  { id: "terengganu",     name: "Terengganu",                       code: "TRG", weekendDays: ["friday", "saturday"] },
+  { id: "wp_kl",          name: "Wilayah Persekutuan Kuala Lumpur", code: "KUL", weekendDays: ["saturday", "sunday"] },
+  { id: "wp_labuan",      name: "Wilayah Persekutuan Labuan",       code: "LBN", weekendDays: ["friday", "saturday"] },
+  { id: "wp_putrajaya",   name: "Wilayah Persekutuan Putrajaya",    code: "PJY", weekendDays: ["saturday", "sunday"] },
 ];
 
 const INITIAL_HOLIDAYS: Holiday[] = [
@@ -218,15 +217,23 @@ const INITIAL_HOLIDAYS: Holiday[] = [
   },
 ];
 
+const _currentYear = new Date().getFullYear();
 const INITIAL_YEARS: YearConfig = {};
 for (let year = 2020; year <= 2030; year++) {
-  INITIAL_YEARS[year.toString()] = true;
+  INITIAL_YEARS[year.toString()] = year >= _currentYear - 2 && year <= _currentYear + 2;
 }
+
+export const DEFAULT_COLORS: ColorConfig = {
+  national: "#FFA726",
+  state: "#FFD54F",
+  weekend: "#D6E8B0",
+};
 
 export const INITIAL_DATA: AppData = {
   states: INITIAL_STATES,
   holidays: INITIAL_HOLIDAYS,
   years: INITIAL_YEARS,
+  colors: DEFAULT_COLORS,
 };
 
 export function loadData(): AppData {
@@ -234,7 +241,12 @@ export function loadData(): AppData {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return INITIAL_DATA;
-    return JSON.parse(stored) as AppData;
+    const parsed = JSON.parse(stored) as AppData;
+    if (!parsed.colors) parsed.colors = DEFAULT_COLORS;
+    parsed.states = parsed.states.map((s) =>
+      s.code ? s : { ...s, code: DEFAULT_STATE_CODES[s.id] ?? "" }
+    );
+    return parsed;
   } catch {
     return INITIAL_DATA;
   }
