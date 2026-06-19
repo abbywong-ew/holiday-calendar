@@ -1,5 +1,6 @@
-import { Holiday, State, DayOfWeek } from "@/types";
+import { Holiday, ReplacementOverride, State, DayOfWeek } from "@/types";
 import { getDaysInMonth, getFirstDayOfMonth, isToday } from "./dateUtils";
+import { getReplacementEntries } from "./replacementUtils";
 
 const DAY_OF_WEEK_NAME: Record<number, DayOfWeek | null> = {
   0: "sunday",
@@ -61,10 +62,19 @@ export function buildMonthCalendar(
   year: number,
   month: number,
   state: State,
-  holidays: Holiday[]
+  holidays: Holiday[],
+  replacementOverrides: ReplacementOverride[] = []
 ): CalendarDay[][] {
   const firstDay = getFirstDayOfMonth(year, month);
   const daysInMonth = getDaysInMonth(year, month);
+
+  // Pre-compute replacement entries for the full year, indexed by replacement date
+  const replacementMap = new Map<string, Holiday[]>();
+  for (const entry of getReplacementEntries(year, state, holidays, replacementOverrides)) {
+    const existing = replacementMap.get(entry.replacementDate) ?? [];
+    existing.push(entry.holiday);
+    replacementMap.set(entry.replacementDate, existing);
+  }
 
   const weeks: CalendarDay[][] = [];
   let week: CalendarDay[] = [];
@@ -92,6 +102,10 @@ export function buildMonthCalendar(
       state.id,
       holidays
     );
+
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const replacementHolidays = replacementMap.get(dateStr);
+    if (replacementHolidays) dayHolidays.push(...replacementHolidays);
 
     week.push({
       day,
@@ -153,8 +167,10 @@ export function getHolidaysForYearAndState(
   const state: HolidayEntry[] = [];
   const yearStr = year.toString();
 
+  const isAll = stateId === "all";
+
   for (const holiday of holidays) {
-    if (!holiday.stateIds.includes(stateId)) continue;
+    if (!isAll && !holiday.stateIds.includes(stateId)) continue;
 
     let dateStr: string | null = null;
 

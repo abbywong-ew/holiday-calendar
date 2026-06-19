@@ -4,16 +4,20 @@ import { useState } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import StateSettings from "@/components/settings/StateSettings";
 import HolidaySettings from "@/components/settings/HolidaySettings";
+import SchoolHolidaySettings from "@/components/settings/SchoolHolidaySettings";
 import YearSettings from "@/components/settings/YearSettings";
 import ColorSettings from "@/components/settings/ColorSettings";
+import BackupRestoreSettings from "@/components/settings/BackupRestoreSettings";
 
-type Tab = "states" | "holidays" | "years" | "colors";
+type Tab = "states" | "holidays" | "school" | "years" | "colors" | "importexport";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "holidays", label: "Holidays" },
+  { id: "school", label: "School Holidays" },
   { id: "states", label: "States" },
   { id: "years", label: "Year Range" },
   { id: "colors", label: "Colours" },
+  { id: "importexport", label: "Backup / Restore" },
 ];
 
 export default function SettingsPage() {
@@ -34,7 +38,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-[#2D3320] mb-6">Settings</h1>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 mb-6 w-fit shadow-sm">
+        <div className="flex flex-wrap gap-1 bg-white border border-gray-200 rounded-xl p-1 mb-6 shadow-sm">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -58,11 +62,17 @@ export default function SettingsPage() {
           {activeTab === "holidays" && (
             <HolidaySettings data={data} onUpdate={updateData} />
           )}
+          {activeTab === "school" && (
+            <SchoolHolidaySettings data={data} onUpdate={updateData} />
+          )}
           {activeTab === "years" && (
             <YearSettings data={data} onUpdate={updateData} />
           )}
           {activeTab === "colors" && (
             <ColorSettings data={data} onUpdate={updateData} />
+          )}
+          {activeTab === "importexport" && (
+            <BackupRestoreSettings data={data} onUpdate={updateData} />
           )}
         </div>
       </div>

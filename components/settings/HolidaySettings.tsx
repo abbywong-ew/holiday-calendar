@@ -1,10 +1,45 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Holiday, HolidayType, DateType, AppData } from "@/types";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Holiday, HolidayType, DateType, AppData, ReplacementOverride } from "@/types";
 import { ALL_STATE_IDS } from "@/utils/storageUtils";
+import { getReplacementEntries, ReplacementEntry } from "@/utils/replacementUtils";
 import { MONTH_NAMES_LONG, getDaysInMonthForDropdown } from "@/utils/dateUtils";
 import { Toast, useToast } from "@/components/Toast";
+
+/* ── CSV helpers ── */
+const CSV_BOM = "﻿";
+
+function csvEscapeHol(val: string): string {
+  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return val;
+}
+
+function parseCSVRow(line: string, sep: string): string[] {
+  const result: string[] = [];
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] === '"') {
+      let val = "";
+      i++;
+      while (i < line.length) {
+        if (line[i] === '"' && line[i + 1] === '"') { val += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
+        else { val += line[i++]; }
+      }
+      result.push(val);
+      if (line.slice(i, i + sep.length) === sep) i += sep.length;
+    } else {
+      const end = line.indexOf(sep, i);
+      if (end === -1) { result.push(line.slice(i)); break; }
+      result.push(line.slice(i, end));
+      i = end + sep.length;
+    }
+  }
+  return result;
+}
 
 type HolidaySettingsProps = {
   data: AppData;
@@ -44,7 +79,7 @@ function generateId(): string {
 
 function SortIcon({ field, active, dir }: { field: string; active: boolean; dir: SortDir }) {
   return (
-    <span className="ml-1 inline-flex flex-col" style={{ fontSize: "8px", lineHeight: 1 }}>
+    <span className="ml-1 inline-flex flex-col" style={{ fontSize: "8px", lineHeight: 1, verticalAlign: "middle" }}>
       <span style={{ opacity: active && dir === "asc" ? 1 : 0.3 }}>▲</span>
       <span style={{ opacity: active && dir === "desc" ? 1 : 0.3 }}>▼</span>
     </span>
@@ -60,6 +95,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
     const cur = new Date().getFullYear().toString();
     return enabled.includes(cur) ? cur : (enabled.at(-1) ?? cur);
   });
+  const [editingVarYear, setEditingVarYear] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -69,9 +105,21 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const [colFilterDay, setColFilterDay] = useState("");
   const [colFilterStates, setColFilterStates] = useState<string[]>([]);
   const [statesDropdownOpen, setStatesDropdownOpen] = useState(false);
+  const [replStateId, setReplStateId] = useState<string>(() => data.states[0]?.id ?? "");
+  const [replEditModal, setReplEditModal] = useState<{
+    holidayId: string;
+    holidayName: string;
+    stateId: string;
+    stateName: string;
+    year: string;
+    originalDate: string;
+    autoDate: string;
+    currentDate: string;
+  } | null>(null);
   const { toast, showToast, hideToast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   const statesDropdownRef = useRef<HTMLDivElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -86,6 +134,33 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const enabledYears = Object.keys(data.years).filter((y) => data.years[y]).sort();
   const maxDays = getDaysInMonthForDropdown(form.fixedMonth);
 
+  const replState = useMemo(
+    () => data.states.find((s) => s.id === replStateId) ?? null,
+    [data.states, replStateId]
+  );
+
+  // Map: original holidayId → replacement entry (with overrides applied)
+  const replacementMap = useMemo(() => {
+    if (!replState) return new Map<string, ReplacementEntry>();
+    const entries = getReplacementEntries(Number(filterYear), replState, data.holidays, data.replacementOverrides);
+    const map = new Map<string, ReplacementEntry>();
+    for (const entry of entries) {
+      map.set(entry.holiday.id.replace(/-replacement$/, ""), entry);
+    }
+    return map;
+  }, [replState, filterYear, data.holidays, data.replacementOverrides]);
+
+  // Map: original holidayId → auto replacement entry (no overrides)
+  const replacementAutoMap = useMemo(() => {
+    if (!replState) return new Map<string, ReplacementEntry>();
+    const entries = getReplacementEntries(Number(filterYear), replState, data.holidays, []);
+    const map = new Map<string, ReplacementEntry>();
+    for (const entry of entries) {
+      map.set(entry.holiday.id.replace(/-replacement$/, ""), entry);
+    }
+    return map;
+  }, [replState, filterYear, data.holidays]);
+
   /* ── helpers ── */
   function scrollToForm() {
     setTimeout(() => {
@@ -96,6 +171,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   function openAddForm() {
     setForm({ ...BLANK_FORM });
     setErrors([]);
+    setEditingVarYear(null);
     setShowForm(true);
     scrollToForm();
   }
@@ -113,6 +189,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       newVariableDate: "",
     });
     setErrors([]);
+    setEditingVarYear(null);
     setShowForm(true);
     scrollToForm();
   }
@@ -120,6 +197,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   function cancelForm() {
     setShowForm(false);
     setErrors([]);
+    setEditingVarYear(null);
   }
 
   function setFormField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -153,6 +231,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       variableDates: { ...prev.variableDates, [year]: dateVal },
       newVariableDate: "",
     }));
+    setEditingVarYear(null);
   }
 
   function removeVariableDate(year: string) {
@@ -161,6 +240,14 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       delete updated[year];
       return { ...prev, variableDates: updated };
     });
+  }
+
+  function editVariableDate(year: string) {
+    setForm((prev) => ({
+      ...prev,
+      newVariableDate: prev.variableDates[year] ?? "",
+    }));
+    setEditingVarYear(year);
   }
 
   function validateForm(): string[] {
@@ -203,6 +290,49 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
     onUpdate({ ...data, holidays: data.holidays.filter((h) => h.id !== deleteConfirm) });
     setDeleteConfirm(null);
     showToast("Holiday deleted.");
+  }
+
+  function openReplEdit(holiday: Holiday) {
+    const entry = replacementMap.get(holiday.id);
+    const autoEntry = replacementAutoMap.get(holiday.id);
+    if (!entry || !autoEntry || !replState) return;
+    setReplEditModal({
+      holidayId: holiday.id,
+      holidayName: holiday.name,
+      stateId: replStateId,
+      stateName: replState.name,
+      year: filterYear,
+      originalDate: entry.originalDate,
+      autoDate: autoEntry.replacementDate,
+      currentDate: entry.replacementDate,
+    });
+  }
+
+  function saveReplOverride() {
+    if (!replEditModal) return;
+    const filtered = data.replacementOverrides.filter(
+      (o) => !(o.holidayId === replEditModal.holidayId && o.stateId === replEditModal.stateId && o.year === replEditModal.year)
+    );
+    const newOverride: ReplacementOverride = {
+      holidayId: replEditModal.holidayId,
+      stateId: replEditModal.stateId,
+      year: replEditModal.year,
+      originalDate: replEditModal.originalDate,
+      replacementDate: replEditModal.currentDate,
+    };
+    onUpdate({ ...data, replacementOverrides: [...filtered, newOverride] });
+    setReplEditModal(null);
+    showToast("Replacement date saved.");
+  }
+
+  function resetReplOverride() {
+    if (!replEditModal) return;
+    const filtered = data.replacementOverrides.filter(
+      (o) => !(o.holidayId === replEditModal.holidayId && o.stateId === replEditModal.stateId && o.year === replEditModal.year)
+    );
+    onUpdate({ ...data, replacementOverrides: filtered });
+    setReplEditModal(null);
+    showToast("Replacement date reset to auto.");
   }
 
   function getDayShort(dateStr: string): string {
@@ -259,9 +389,65 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
   const thClass =
     "px-4 py-3 text-left font-semibold text-[#2D3320] cursor-pointer select-none hover:bg-[#EBF3D6] transition-colors";
 
+  /* ── Export template CSV ── */
+  function exportTemplateCSV() {
+    const today = new Date().toISOString().slice(0, 10);
+    const headers = ["Holiday Name", ...enabledYears];
+    const rows = data.holidays.map((h) => {
+      const dateCols = enabledYears.map((y) => {
+        if (h.dateType === "fixed") {
+          return `${y}-${String(h.fixedMonth!).padStart(2, "0")}-${String(h.fixedDay!).padStart(2, "0")}`;
+        }
+        return h.variableDates?.[y] ?? "";
+      });
+      return [h.name, ...dateCols];
+    });
+    const csv = CSV_BOM + [headers, ...rows].map((row) => row.map(csvEscapeHol).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `jiyuu-hato-holidays-template-${today}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Holiday template exported.");
+  }
+
+  /* ── Import dates from CSV ── */
+  function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (importFileRef.current) importFileRef.current.value = "";
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const raw = (evt.target?.result as string).replace(/^﻿/, "");
+      const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) { showToast("CSV has no data rows."); return; }
+      // Auto-detect delimiter: Excel may save with ";" instead of ","
+      const sep = lines[0].includes(";") ? ";" : ",";
+      const headerCols = parseCSVRow(lines[0], sep);
+      const yearCols = headerCols.slice(1);
+      let updated = 0;
+      const holidays = data.holidays.map((h) => {
+        if (h.dateType !== "variable") return h;
+        const row = lines.slice(1).map((l) => parseCSVRow(l, sep)).find((r) => r[0]?.trim().toLowerCase() === h.name.toLowerCase());
+        if (!row) return h;
+        const newVarDates = { ...(h.variableDates ?? {}) };
+        yearCols.forEach((y, i) => {
+          const val = row[1 + i]?.trim();
+          if (val) newVarDates[y] = val;
+        });
+        updated++;
+        return { ...h, variableDates: newVarDates };
+      });
+      onUpdate({ ...data, holidays });
+      showToast(`Updated dates for ${updated} holiday${updated !== 1 ? "s" : ""}.`);
+    };
+    reader.readAsText(file);
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <h2 className="text-xl font-bold text-[#2D3320]">Manage Holidays</h2>
         {!showForm && (
           <button
@@ -448,7 +634,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                       onClick={addVariableDate}
                       className="px-3 py-1.5 text-sm bg-[#7A8C3F] hover:bg-[#5C6B2E] text-white rounded-lg transition-colors"
                     >
-                      Add Date
+                      {editingVarYear ? "Edit Date" : "Add Date"}
                     </button>
                   </div>
 
@@ -468,8 +654,10 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                               <td className="px-3 py-2 font-mono text-xs">{year}</td>
                               <td className="px-3 py-2 text-xs">{form.variableDates[year]}</td>
                               <td className="px-3 py-2 text-center">
-                                <button type="button" onClick={() => removeVariableDate(year)}
-                                  className="text-xs text-red-500 hover:text-red-700 underline">Delete</button>
+                                <button type="button" onClick={() => editVariableDate(year)}
+                                  className="p-1 rounded hover:bg-[#D6E8B0] text-[#5C6B2E] transition-colors" title="Edit date">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -496,15 +684,50 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
       )}
 
       {/* ── Filter + Sortable Holiday Table ── */}
-      <div className="flex items-center gap-3 mb-3">
-        <label className="text-sm font-medium text-[#2D3320]">Filter by Year:</label>
-        <select
-          value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
-        >
-          {enabledYears.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
+      <div className="flex flex-col gap-2 mb-3">
+        {/* Row 1: Filter by Year + Export/Import */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm font-medium text-[#2D3320]">Filter by Year:</label>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
+            >
+              {enabledYears.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <button
+              onClick={exportTemplateCSV}
+              title="Export holiday names as CSV template"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white hover:bg-[#EBF3D6] text-[#5C6B2E] border border-[#D6E8B0] rounded-lg font-medium transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <button
+              onClick={() => importFileRef.current?.click()}
+              title="Import holiday dates from CSV"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white hover:bg-[#EBF3D6] text-[#5C6B2E] border border-[#D6E8B0] rounded-lg font-medium transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 5 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import
+            </button>
+            <input ref={importFileRef} type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+          </div>
+        </div>
+        {/* Row 2: Replacement for */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-[#2D3320]">Replacement for:</label>
+          <select
+            value={replStateId}
+            onChange={(e) => setReplStateId(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
+          >
+            {data.states.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -512,7 +735,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
           <thead>
             {/* Sort headers — order: Holiday, Date, Day, Type, States, Actions */}
             <tr className="bg-[#F7F9F2] border-b border-gray-200">
-              <th className={thClass} onClick={() => toggleSort("name")}>
+              <th className={`${thClass} sticky left-0 z-10 bg-[#F7F9F2] border-r border-gray-200`} onClick={() => toggleSort("name")}>
                 Holiday <SortIcon field="name" active={sortField === "name"} dir={sortDir} />
               </th>
               <th className={thClass} onClick={() => toggleSort("date")}>
@@ -523,12 +746,13 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                 Type <SortIcon field="type" active={sortField === "type"} dir={sortDir} />
               </th>
               <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">States</th>
+              <th className="px-4 py-3 text-left font-semibold text-[#2D3320]">Replacement</th>
               <th className="text-center px-4 py-3 font-semibold text-[#2D3320]">Actions</th>
             </tr>
             {/* Column filters */}
             <tr className="bg-white border-b border-gray-200">
               {/* Holiday filter */}
-              <th className="px-2 py-1.5">
+              <th className="px-2 py-1.5 sticky left-0 z-10 bg-white border-r border-gray-200">
                 <input
                   type="text"
                   placeholder="Search…"
@@ -633,6 +857,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                 </div>
               </th>
               <th className="px-2 py-1.5" />
+              <th className="px-2 py-1.5" />
             </tr>
           </thead>
           <tbody>
@@ -640,9 +865,13 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
               const stateDisplay = getStateDisplay(holiday);
               const isTruncated = stateDisplay.length > 40;
               const dateStr = getDateDisplay(holiday);
+              const replEntry = replacementMap.get(holiday.id);
+              const hasOverride = data.replacementOverrides.some(
+                (o) => o.holidayId === holiday.id && o.stateId === replStateId && o.year === filterYear
+              );
               return (
-                <tr key={holiday.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
-                  <td className="px-4 py-3 text-[#2D3320] font-medium">{holiday.name}</td>
+                <tr key={holiday.id} className="group border-b border-gray-100 hover:bg-gray-50 last:border-0">
+                  <td className="px-4 py-3 text-[#2D3320] font-medium sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-r border-gray-200">{holiday.name}</td>
                   <td className="px-4 py-3 text-[#5A6640] font-mono text-xs whitespace-nowrap">
                     {dateStr}
                   </td>
@@ -663,6 +892,31 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
                     <span className="line-clamp-1">
                       {isTruncated ? stateDisplay.slice(0, 40) + "…" : stateDisplay}
                     </span>
+                  </td>
+                  {/* Replacement column */}
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    {replEntry ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-mono ${hasOverride ? "text-purple-600" : "text-[#5A6640]"}`}>
+                          {replEntry.replacementDate}
+                        </span>
+                        {hasOverride && (
+                          <span className="text-[9px] text-purple-400" title="Custom override">●</span>
+                        )}
+                        <button
+                          onClick={() => openReplEdit(holiday)}
+                          className="p-1 rounded hover:bg-[#D6E8B0] text-[#5C6B2E] transition-colors"
+                          title="Edit replacement date"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
@@ -692,7 +946,7 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
             })}
             {sortedHolidays.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">
                   {data.holidays.length === 0 ? "No holidays added yet." : "No holidays match the current filters."}
                 </td>
               </tr>
@@ -700,6 +954,58 @@ export default function HolidaySettings({ data, onUpdate }: HolidaySettingsProps
           </tbody>
         </table>
       </div>
+
+      {/* Edit Replacement Modal */}
+      {replEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-[#2D3320] mb-1">Edit Replacement Date</h3>
+            <p className="text-sm text-[#5A6640] mb-4">
+              {replEditModal.holidayName} — {replEditModal.stateName} — {replEditModal.year}
+            </p>
+            <div className="mb-4 p-3 bg-[#F7F9F2] rounded-lg text-xs text-[#5A6640] space-y-1">
+              <p>Original date: <span className="font-mono font-medium text-[#2D3320]">{replEditModal.originalDate}</span></p>
+              <p>Auto replacement: <span className="font-mono font-medium text-[#2D3320]">{replEditModal.autoDate}</span></p>
+            </div>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-[#2D3320] mb-1.5">Replacement Date</label>
+              <input
+                type="date"
+                value={replEditModal.currentDate}
+                onChange={(e) =>
+                  setReplEditModal((prev) => prev ? { ...prev, currentDate: e.target.value } : null)
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A8C3F]"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={resetReplOverride}
+                disabled={!data.replacementOverrides.some(
+                  (o) => o.holidayId === replEditModal.holidayId && o.stateId === replEditModal.stateId && o.year === replEditModal.year
+                )}
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 text-[#5A6640] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Reset to Auto
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setReplEditModal(null)}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-[#5A6640] hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveReplOverride}
+                  className="px-4 py-2 text-sm rounded-lg bg-[#7A8C3F] hover:bg-[#5C6B2E] text-white font-medium transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

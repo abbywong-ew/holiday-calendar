@@ -1,6 +1,6 @@
 "use client";
 
-import { Holiday, State } from "@/types";
+import { Holiday, ReplacementOverride, SchoolHoliday, State } from "@/types";
 import MonthGrid from "./MonthGrid";
 
 type CalendarGridProps = {
@@ -8,6 +8,8 @@ type CalendarGridProps = {
   state: State;
   holidays: Holiday[];
   allStates: State[];
+  replacementOverrides: ReplacementOverride[];
+  schoolHolidays: SchoolHoliday[];
 };
 
 export default function CalendarGrid({
@@ -15,6 +17,8 @@ export default function CalendarGrid({
   state,
   holidays,
   allStates,
+  replacementOverrides,
+  schoolHolidays,
 }: CalendarGridProps) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -28,6 +32,8 @@ export default function CalendarGrid({
           state={state}
           holidays={holidays}
           allStates={allStates}
+          replacementOverrides={replacementOverrides}
+          schoolHolidays={schoolHolidays}
         />
       ))}
     </div>

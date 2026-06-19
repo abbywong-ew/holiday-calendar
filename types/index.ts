@@ -21,6 +21,7 @@ export type Holiday = {
     [year: string]: string;
   };
   stateIds: string[];
+  isReplacement?: boolean;
 };
 
 export type YearConfig = {
@@ -31,6 +32,22 @@ export type ColorConfig = {
   national: string;
   state: string;
   weekend: string;
+  school: string;
+};
+
+export type SchoolHoliday = {
+  id: string;
+  name: string;
+  stateIds: string[];
+  ranges: Record<string, { startDate: string; endDate: string }>;
+};
+
+export type ReplacementOverride = {
+  holidayId: string;
+  stateId: string;
+  year: string;
+  originalDate: string;
+  replacementDate: string;
 };
 
 export type AppData = {
@@ -38,4 +55,6 @@ export type AppData = {
   holidays: Holiday[];
   years: YearConfig;
   colors: ColorConfig;
+  schoolHolidays: SchoolHoliday[];
+  replacementOverrides: ReplacementOverride[];
 };

@@ -1,4 +1,4 @@
-import { AppData, ColorConfig, Holiday, State, YearConfig } from "@/types";
+import { AppData, ColorConfig, Holiday, ReplacementOverride, SchoolHoliday, State, YearConfig } from "@/types";
 
 export const STORAGE_KEY = "my-calendar-app-data";
 
@@ -227,13 +227,45 @@ export const DEFAULT_COLORS: ColorConfig = {
   national: "#FFA726",
   state: "#FFD54F",
   weekend: "#D6E8B0",
+  school: "#81D4FA",
 };
+
+const INITIAL_SCHOOL_HOLIDAYS: SchoolHoliday[] = [
+  {
+    id: "school-midterm1",
+    name: "Mid-Term Break 1",
+    stateIds: ALL_STATE_IDS,
+    ranges: { "2026": { startDate: "2026-03-14", endDate: "2026-03-22" } },
+  },
+  {
+    id: "school-midyear",
+    name: "Mid-Year Break",
+    stateIds: ALL_STATE_IDS,
+    ranges: { "2026": { startDate: "2026-05-30", endDate: "2026-06-14" } },
+  },
+  {
+    id: "school-midterm2",
+    name: "Mid-Term Break 2",
+    stateIds: ALL_STATE_IDS,
+    ranges: { "2026": { startDate: "2026-08-08", endDate: "2026-08-16" } },
+  },
+  {
+    id: "school-yearend",
+    name: "Year-End Break",
+    stateIds: ALL_STATE_IDS,
+    ranges: { "2026": { startDate: "2026-11-14", endDate: "2027-01-03" } },
+  },
+];
+
+const INITIAL_REPLACEMENT_OVERRIDES: ReplacementOverride[] = [];
 
 export const INITIAL_DATA: AppData = {
   states: INITIAL_STATES,
   holidays: INITIAL_HOLIDAYS,
   years: INITIAL_YEARS,
   colors: DEFAULT_COLORS,
+  schoolHolidays: INITIAL_SCHOOL_HOLIDAYS,
+  replacementOverrides: INITIAL_REPLACEMENT_OVERRIDES,
 };
 
 export function loadData(): AppData {
@@ -243,9 +275,24 @@ export function loadData(): AppData {
     if (!stored) return INITIAL_DATA;
     const parsed = JSON.parse(stored) as AppData;
     if (!parsed.colors) parsed.colors = DEFAULT_COLORS;
+    if (!parsed.colors.school) parsed.colors.school = DEFAULT_COLORS.school;
     parsed.states = parsed.states.map((s) =>
       s.code ? s : { ...s, code: DEFAULT_STATE_CODES[s.id] ?? "" }
     );
+    if (!parsed.schoolHolidays) parsed.schoolHolidays = INITIAL_SCHOOL_HOLIDAYS;
+    // Migrate old school holiday format (year/startDate/endDate per entry) to new (ranges map)
+    if (parsed.schoolHolidays.length > 0 && "year" in (parsed.schoolHolidays[0] as Record<string, unknown>)) {
+      const grouped = new Map<string, SchoolHoliday>();
+      for (const old of parsed.schoolHolidays as unknown as Array<{ id: string; name: string; year: string; startDate: string; endDate: string; stateIds: string[] }>) {
+        const key = old.name + "|||" + [...old.stateIds].sort().join(",");
+        if (!grouped.has(key)) {
+          grouped.set(key, { id: old.id, name: old.name, stateIds: old.stateIds, ranges: {} });
+        }
+        grouped.get(key)!.ranges[old.year] = { startDate: old.startDate, endDate: old.endDate };
+      }
+      parsed.schoolHolidays = Array.from(grouped.values());
+    }
+    if (!parsed.replacementOverrides) parsed.replacementOverrides = INITIAL_REPLACEMENT_OVERRIDES;
     return parsed;
   } catch {
     return INITIAL_DATA;

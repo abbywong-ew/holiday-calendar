@@ -15,6 +15,13 @@ export default function CalendarPage() {
   const { data, isLoaded } = useCalendarData();
   const [selectedYear, setSelectedYear] = useState(DEFAULT_YEAR);
   const [selectedStateId, setSelectedStateId] = useState(DEFAULT_STATE_ID);
+  const [listStateId, setListStateId] = useState(DEFAULT_STATE_ID);
+  const [showSchoolHolidays, setShowSchoolHolidays] = useState(false);
+
+  // Sync listing state when calendar state changes
+  useEffect(() => {
+    setListStateId(selectedStateId);
+  }, [selectedStateId]);
 
   const enabledYears = useMemo(
     () =>
@@ -111,6 +118,19 @@ export default function CalendarPage() {
             <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "var(--hol-state)" }} />
             State Holiday
           </span>
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showSchoolHolidays}
+              onChange={(e) => setShowSchoolHolidays(e.target.checked)}
+              className="w-3 h-3 accent-[#7A8C3F]"
+            />
+            <span
+              className="inline-block w-3 h-3 rounded transition-colors"
+              style={{ backgroundColor: showSchoolHolidays ? "var(--hol-school)" : "#d1d5db" }}
+            />
+            <span className={showSchoolHolidays ? "" : "text-gray-400"}>School Holiday</span>
+          </label>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "var(--hol-weekend)" }} />
             Weekend
@@ -127,20 +147,27 @@ export default function CalendarPage() {
           state={selectedState}
           holidays={data.holidays}
           allStates={data.states}
+          replacementOverrides={data.replacementOverrides}
+          schoolHolidays={showSchoolHolidays ? data.schoolHolidays : []}
         />
 
-        {/* Holiday summary */}
+        {/* Holiday summary — always follows Calendar State */}
         <HolidayList
           year={selectedYear}
-          state={selectedState}
+          listStateId={selectedStateId}
+          allStates={data.states}
           holidays={data.holidays}
+          replacementOverrides={data.replacementOverrides}
+          schoolHolidays={showSchoolHolidays ? data.schoolHolidays : []}
         />
 
         {/* Holiday date table */}
         <HolidayDateTable
           selectedYear={selectedYear}
-          selectedState={selectedState}
+          listStateId={listStateId}
+          allStates={data.states}
           holidays={data.holidays}
+          onListStateChange={setListStateId}
         />
       </div>
     </div>

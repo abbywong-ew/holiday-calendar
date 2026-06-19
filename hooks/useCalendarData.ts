@@ -19,6 +19,7 @@ function applyColors(colors: ColorConfig): void {
   root.style.setProperty("--hol-national", colors.national);
   root.style.setProperty("--hol-state", colors.state);
   root.style.setProperty("--hol-weekend", colors.weekend);
+  root.style.setProperty("--hol-school", colors.school ?? "#81D4FA");
   root.style.setProperty("--hol-national-light", hexToRgba(colors.national, 0.15));
   root.style.setProperty("--hol-state-light", hexToRgba(colors.state, 0.15));
 }
@@ -34,10 +35,10 @@ export function useCalendarData() {
   }, []);
 
   // Apply CSS custom properties whenever colors change
-  const { national, state, weekend } = data.colors ?? DEFAULT_COLORS;
+  const colors = data.colors ?? DEFAULT_COLORS;
   useEffect(() => {
-    applyColors({ national, state, weekend });
-  }, [national, state, weekend]);
+    applyColors({ ...DEFAULT_COLORS, ...colors });
+  }, [colors]);
 
   const updateData = useCallback((newData: AppData) => {
     setData(newData);

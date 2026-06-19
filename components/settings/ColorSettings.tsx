@@ -19,6 +19,7 @@ const COLOR_ROWS: ColorRow[] = [
   { key: "national", label: "National Holiday", description: "Public holidays observed across all states" },
   { key: "state",    label: "State Holiday",    description: "Holidays specific to individual states" },
   { key: "weekend",  label: "Weekend",           description: "Saturday/Sunday (or state-specific weekend days)" },
+  { key: "school",   label: "School Holiday",   description: "School holiday date ranges" },
 ];
 
 export default function ColorSettings({ data, onUpdate }: ColorSettingsProps) {

@@ -117,12 +117,15 @@ my-calendar/
 ### Holiday Settings (`components/settings/HolidaySettings.tsx`)
 - **6 columns:** Holiday | Date | Day | Type | States | Actions
 - **States column:** Shows 3-letter postal codes (e.g. `PRK, SGR`) or `ALL` for national holidays
-- **Mobile:** Table uses `overflow-x-auto`, all columns present, user scrolls horizontally
+- **Mobile:** Table uses `overflow-x-auto`, first column sticky on scroll, all columns present
 - **Filters:** Search (Holiday), text (Date), dropdown (Day), dropdown (Type), checkbox-dropdown (States)
 - **States filter:** Spreadsheet-style checkbox dropdown — shows all 16 states, "Select all / Clear", count badge when active
 - **Actions:** Icon-only buttons (pencil=edit, bin=delete), `p-1.5` sizing
 - **Sort:** Click headers to sort by name/type/date
 - **Default form:** Type = State, DateType = Variable, no states pre-checked
+- **Filter row:** Two rows — (1) Filter by Year + Export/Import right-aligned, (2) Replacement for on own row
+- **Export/Import:** Export downloads CSV template with holiday names + empty date columns (per enabled year); Import updates variable dates from CSV
+- **Variable dates:** "Add Date" button → "Edit Date" when editing existing entry (no deletion, just pre-fill)
 - **Filter year:** Defaults to current year
 
 ### State Settings (`components/settings/StateSettings.tsx`)
@@ -133,6 +136,15 @@ my-calendar/
 
 ### Year Settings (`components/settings/YearSettings.tsx`)
 - **2-column grid:** Year checkboxes, responsive on mobile
+
+### School Holiday Settings (`components/settings/SchoolHolidaySettings.tsx`)
+- **Table columns:** Name | States | [one column per enabled year] | Actions
+- **Year columns:** Shows date range (`MM-DD → MM-DD`) for each year, or `—` if no range for that year
+- **Mobile:** Table uses `overflow-x-auto`, first column sticky on scroll
+- **Add/Edit form:** Name + States (checkboxes) + Date Ranges section
+- **Date ranges:** Edit-in-place with pencil icon (no deletion, pre-fill inputs), "+ Add Range" → "Edit Range" when editing
+- **Year picker:** Shows `✓` suffix for years already assigned a range
+- **Data structure:** `SchoolHoliday.ranges` is `Record<year, {startDate, endDate}>` (mirrors `Holiday.variableDates` pattern)
 
 ---
 
@@ -249,6 +261,40 @@ my-calendar/
 
 ---
 
+## Recent Amendments (2026-06-19)
+
+### Variable Date & Range Editing
+- **Holidays:** "Add Date" button changes to "Edit Date" when editing a variable date entry (no form deletion)
+- **School Holidays:** "+ Add Range" button changes to "Edit Range" when editing a date range (no form deletion)
+- Both use `editingVarYear` / `editingRangeYear` state to track active edit mode
+- State clears on `cancelForm()`, `openAddForm()`, and `openEditForm()` to reset UI
+
+### Filter Row Responsive Layout
+- **HolidaySettings:** Two-row fixed layout instead of responsive flex-wrap
+  - **Row 1:** Filter by Year [dropdown] | Export button | Import button (right-aligned)
+  - **Row 2:** Replacement for: [dropdown]
+  - No horizontal scrollbar on mobile, clean stacking
+- **Filter component:** Uses `flex flex-col gap-2` at root, Row 1 uses `flex items-center gap-3` with `ml-auto` push-right
+
+### Sticky Table Columns
+- **Holidays & School Holidays tables:** First column (Holiday name / School Holiday name) now sticky on horizontal scroll
+- Implementation: `sticky left-0 z-10` + `bg-white` + `border-r border-gray-200` on tbody td
+- Header cells also sticky: `sticky left-0 z-10` + `bg-[#F7F9F2]` + `border-r border-gray-200`
+- Hover state preserved with `group-hover:bg-gray-50` on row-body
+
+### Settings Tab Wrapping
+- `app/settings/page.tsx` tab container: removed `w-fit`, added `flex-wrap`
+- All 6 tabs now wrap across multiple rows on small screens (mobile)
+- Full visibility at 375px; no overflow off-screen
+
+### Heading Alignment Polish
+- **HolidaySettings & SchoolHolidaySettings:** Changed heading flex from `items-center` to `items-start`
+- Removes vertical centering offset caused by taller "+ Add" button
+- Aligns heading top with other settings pages (StateSettings, etc.)
+- Visual consistency across all Settings tabs
+
+---
+
 ## Development Patterns
 
 ### Adding Styles
@@ -341,18 +387,28 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key-here>
 
 ---
 
+## Completed Features
+
+### School Holidays (✅ completed)
+School holidays implemented as date ranges (start date → end date), distinct from single-day public holidays.
+
+**Implemented:**
+- ✅ Separate `SchoolHoliday` type with `ranges: Record<year, {startDate, endDate}>` (per-year date ranges)
+- ✅ Display on calendar: colored cells spanning multiple days with tooltip
+- ✅ Settings: separate **School Holidays tab** with table (Name | States | [Year columns] | Actions)
+- ✅ States: school holidays differ by state (same approach as existing state holidays)
+- ✅ Color: CSS custom property `--hol-school` with color picker in **Colours tab**
+- ✅ Print: HolidayList shows school holiday ranges (start → end + day count)
+- ✅ Calendar legend: checkbox toggle (default off, user can enable)
+- ✅ CSV backup/restore: School Holidays CSV export with per-year start/end/duration columns
+
 ## Future Plans
 
-### School Holidays (planned)
-Add school holidays as date ranges (start date → end date), distinct from single-day public holidays.
-
-**Key design decisions to make:**
-- New holiday type `"school"` or a separate `SchoolHoliday` type with `startDate` / `endDate` fields
-- Display on calendar: span/range highlight across multiple days
-- Settings: separate tab or merged into Holidays tab with a "School" type option
-- States: school holidays differ by state (same approach as existing state holidays)
-- Color: needs a new CSS custom property (e.g. `--hol-school`) and color picker in Colours tab
-- Print: range rows in HolidayDateTable showing start–end instead of single date
+### Phase 9 Roadmap
+- Import/export enhancements for bulk holiday management
+- Advanced filtering and search across multiple criteria
+- Holiday replacement notes/details
+- Calendar view options (agenda, list, grid variants)
 
 ---
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Holiday, State } from "@/types";
+import { useState, useMemo } from "react";
+import { Holiday, ReplacementOverride, SchoolHoliday, State } from "@/types";
 import { buildMonthCalendar, isDayWeekend } from "@/utils/calendarUtils";
 import { MONTH_NAMES_LONG } from "@/utils/dateUtils";
 
@@ -11,6 +11,8 @@ type MonthGridProps = {
   state: State;
   holidays: Holiday[];
   allStates: State[];
+  replacementOverrides: ReplacementOverride[];
+  schoolHolidays: SchoolHoliday[];
 };
 
 const DAY_HEADERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -23,10 +25,34 @@ export default function MonthGrid({
   state,
   holidays,
   allStates,
+  replacementOverrides,
+  schoolHolidays,
 }: MonthGridProps) {
-  const weeks = buildMonthCalendar(year, month, state, holidays);
+  const weeks = buildMonthCalendar(year, month, state, holidays, replacementOverrides);
   const monthName = MONTH_NAMES_LONG[month - 1];
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+
+  // Build a map of date string → school holiday name for this month's state
+  const schoolDayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const mStart = new Date(year, month - 1, 1);
+    const mEnd = new Date(year, month, 0);
+    for (const sh of schoolHolidays) {
+      if (!sh.stateIds.includes(state.id)) continue;
+      const range = sh.ranges[year.toString()];
+      if (!range) continue;
+      const rangeStart = new Date(Math.max(new Date(range.startDate).getTime(), mStart.getTime()));
+      const rangeEnd = new Date(Math.min(new Date(range.endDate).getTime(), mEnd.getTime()));
+      if (rangeStart > rangeEnd) continue;
+      const cur = new Date(rangeStart);
+      while (cur <= rangeEnd) {
+        const ds = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+        map.set(ds, sh.name);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return map;
+  }, [schoolHolidays, state.id, year, month]);
 
   return (
     <div className="border border-gray-300 rounded-lg text-[11px] print:text-[7px] print:rounded">
@@ -67,17 +93,20 @@ export default function MonthGrid({
             /* Determine background */
             const hasNational = cell.holidays.some((h) => h.type === "national");
             const hasState = cell.holidays.some((h) => h.type === "state");
-            const hasHoliday = cell.holidays.length > 0;
+            const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(cell.day).padStart(2, "0")}`;
+            const schoolName = schoolDayMap.get(dateStr);
+            const hasHoliday = cell.holidays.length > 0 || !!schoolName;
 
             let bgColor = colWeekend ? "var(--hol-weekend)" : "#ffffff";
             const fg = "text-[#2D3320]";
             if (hasNational) bgColor = "var(--hol-national)";
             else if (hasState) bgColor = "var(--hol-state)";
+            else if (schoolName) bgColor = "var(--hol-school)";
 
             const isHovered = tooltip?.wi === wi && tooltip?.di === di;
 
-            const buildLines = () =>
-              cell.holidays.map((h) => {
+            const buildLines = () => {
+              const lines = cell.holidays.map((h) => {
                 const names =
                   h.stateIds.length === allStates.length
                     ? "ALL"
@@ -86,6 +115,9 @@ export default function MonthGrid({
                         .join(", ");
                 return `${h.name} — ${names}`;
               });
+              if (schoolName) lines.push(`School Holiday: ${schoolName}`);
+              return lines;
+            };
 
             return (
               <div
@@ -114,7 +146,7 @@ export default function MonthGrid({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {cell.holidays[0].name}
+                    {cell.holidays.length > 0 ? cell.holidays[0].name : schoolName}
                   </span>
                 )}
 

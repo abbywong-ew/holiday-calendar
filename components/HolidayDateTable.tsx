@@ -5,6 +5,7 @@ import { Holiday, State } from "@/types";
 import { getHolidaysForYearAndState } from "@/utils/calendarUtils";
 import { getShortDayName } from "@/utils/dateUtils";
 
+
 type HolidayDateEntry = {
   holiday: Holiday;
   dates: {
@@ -17,14 +18,22 @@ type SortDirection = "asc" | "desc";
 
 export default function HolidayDateTable({
   selectedYear,
-  selectedState,
+  listStateId,
+  allStates,
   holidays,
+  onListStateChange,
 }: {
   selectedYear: number;
-  selectedState: State;
+  listStateId: string;
+  allStates: State[];
   holidays: Holiday[];
+  onListStateChange: (id: string) => void;
 }) {
   const years = [selectedYear - 2, selectedYear - 1, selectedYear, selectedYear + 1, selectedYear + 2];
+  const stateLabel =
+    listStateId === "all"
+      ? "All States"
+      : (allStates.find((s) => s.id === listStateId)?.name ?? listStateId);
   const [sortColumn, setSortColumn] = useState<SortColumn>("year2");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -37,10 +46,12 @@ export default function HolidayDateTable({
     }
   };
 
-  const getSortIndicator = (column: SortColumn) => {
-    if (sortColumn !== column) return " ↕";
-    return sortDirection === "asc" ? " ↑" : " ↓";
-  };
+  const SortIcon = ({ column }: { column: SortColumn }) => (
+    <span className="ml-1 inline-flex flex-col" style={{ fontSize: "8px", lineHeight: 1, verticalAlign: "middle" }}>
+      <span style={{ opacity: sortColumn === column && sortDirection === "asc" ? 1 : 0.3 }}>▲</span>
+      <span style={{ opacity: sortColumn === column && sortDirection === "desc" ? 1 : 0.3 }}>▼</span>
+    </span>
+  );
 
   const yearColumnMap: Record<string, number> = {
     year0: years[0],
@@ -57,7 +68,7 @@ export default function HolidayDateTable({
     for (const year of years) {
       const { national, state } = getHolidaysForYearAndState(
         year,
-        selectedState.id,
+        listStateId,
         holidays
       );
 
@@ -101,7 +112,7 @@ export default function HolidayDateTable({
     });
 
     return result;
-  }, [selectedYear, selectedState.id, holidays, years, sortColumn, sortDirection, yearColumnMap]);
+  }, [selectedYear, listStateId, holidays, years, sortColumn, sortDirection, yearColumnMap]);
 
   if (tableData.length === 0) {
     return null;
@@ -112,8 +123,25 @@ export default function HolidayDateTable({
 
   return (
     <div className="holiday-date-table mt-8 border-t border-[#E0E8D8] pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 print:hidden">
+        <label className="text-xs font-medium text-[#5A6640] uppercase tracking-wide shrink-0">
+          Listing State
+        </label>
+        <select
+          value={listStateId}
+          onChange={(e) => onListStateChange(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7A8C3F] focus:border-transparent shadow-sm min-w-[220px]"
+        >
+          <option value="all">ALL — All States</option>
+          {allStates.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
       <h2 className="text-lg font-semibold text-[#2D3320] mb-2">
-        Holiday Dates: {selectedState.name} ({years[0]} - {years[4]})
+        Holiday Dates: {stateLabel} ({years[0]} - {years[4]})
       </h2>
 
       <div className="overflow-x-auto">
@@ -124,37 +152,37 @@ export default function HolidayDateTable({
                 className="sticky left-0 z-10 px-3 py-2 text-left text-white font-semibold cursor-pointer hover:bg-[#8B9E4D] transition-colors bg-[#7A8C3F]"
                 onClick={() => handleSort("name")}
               >
-                Holiday Name{getSortIndicator("name")}
+                Holiday Name<SortIcon column="name" />
               </th>
               <th
                 className="px-1.5 py-2 text-center text-white font-semibold min-w-[85px] cursor-pointer hover:bg-[#8B9E4D] transition-colors"
                 onClick={() => handleSort("year0")}
               >
-                {years[0]}{getSortIndicator("year0")}
+                {years[0]}<SortIcon column="year0" />
               </th>
               <th
                 className="px-1.5 py-2 text-center text-white font-semibold min-w-[85px] cursor-pointer hover:bg-[#8B9E4D] transition-colors"
                 onClick={() => handleSort("year1")}
               >
-                {years[1]}{getSortIndicator("year1")}
+                {years[1]}<SortIcon column="year1" />
               </th>
               <th
                 className="px-1.5 py-2 text-center text-white font-semibold min-w-[85px] bg-[#5C6B2E] cursor-pointer hover:bg-[#6B7D38] transition-colors"
                 onClick={() => handleSort("year2")}
               >
-                {years[2]}{getSortIndicator("year2")}
+                {years[2]}<SortIcon column="year2" />
               </th>
               <th
                 className="px-1.5 py-2 text-center text-white font-semibold min-w-[85px] cursor-pointer hover:bg-[#8B9E4D] transition-colors"
                 onClick={() => handleSort("year3")}
               >
-                {years[3]}{getSortIndicator("year3")}
+                {years[3]}<SortIcon column="year3" />
               </th>
               <th
                 className="px-1.5 py-2 text-center text-white font-semibold min-w-[85px] cursor-pointer hover:bg-[#8B9E4D] transition-colors"
                 onClick={() => handleSort("year4")}
               >
-                {years[4]}{getSortIndicator("year4")}
+                {years[4]}<SortIcon column="year4" />
               </th>
             </tr>
           </thead>
